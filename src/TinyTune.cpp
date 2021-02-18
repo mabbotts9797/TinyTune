@@ -1,4 +1,4 @@
-#include <src/TinyTune.h>
+#include <TinyTune.h>
 
 volatile long timerOverflowCount = 0;
 volatile long timerOverflowCountTarget = 1;
