@@ -1,0 +1,19 @@
+{
+    "name": "TinyTune",
+    "keywords": ["avr", "tone", "tune", "music", "c++"],
+    "description": "TinyTune is a tiny library for generating tones",
+    "authors":
+    {
+        "name": "mabbotts9797",
+		"email": "mabbotts86@gmail.com",
+		"maintainer": true
+    },
+    "repository": 
+    {
+        "type": "git",
+        "url": "https://github.com/mabbotts9797/TinyTune"
+    },
+    "version": "1.0.0",
+    "frameworks": "*",
+    "platforms": "atmelavr"
+}
