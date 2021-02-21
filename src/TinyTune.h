@@ -3,6 +3,11 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
+// MCU specific configuration
+#if defined (__AVR_ATtiny85__)
+#  include <specific/tn85.h>
+#endif
+
 #ifndef F_CPU
 #define F_CPU 8000000UL
 #endif
@@ -76,5 +81,4 @@ class TinyTune
         void PlayMelody(melody melody);  
     private:
         void Init();
-        void SetFrequency(unsigned long desiredFrequency);
 };
