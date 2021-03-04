@@ -9,28 +9,42 @@ volatile bool playNextInSequence = false;
 
 void Common_Initialise()
 {
-    SELECTED_OUTPUT_PIN_REGISTER |= (1 << SELECTED_OUTPUT_PIN);
-
     #if (SELECTED_OUTPUT_PIN == PB0)
-        TCCR0A=(0<<COM0A1) | (1<<COM0A0) | (0<<COM0B1) | (0<<COM0B0) | (1<<WGM01) | (0<<WGM00);
+        DDRB |= (1 << PB0);
+        TCCR0A = 0b01000010;
+        // Enable Compare Match A or B Interrupt, this is used for delays
+        TIMSK |= (1 << OCIE0A);
+    #elif (SELECTED_OUTPUT_PIN == PB1)
+        DDRB |= (1 << PB1);
+        TCCR0A = 0b00010010;
+        // Enable Compare Match A or B Interrupt, this is used for delays
+        TIMSK |= (1 << OCIE0B);
     #endif
-    TCCR0B=(0<<WGM02) | (1<<CS02) | (0<<CS01) | (0<<CS00);
-    // Enable Compare Match A Interrupt, this is used for delays
-    TIMSK |= (1 << OCIE0A);
+
+    TCCR0B = 0b00000100;
     TCNT0=0x00;
     OCR0B = 0x00;
+    OCR0A = 0x00;
+
     sei();
 }
 
 void Common_DisableOutput()
 {
-    TCCR0A &= ~(1 << COM0A0) & ~(1 << COM0A1);
+    #if (SELECTED_OUTPUT_PIN == PB0)
+        TCCR0A &= ~(1 << COM0A0);
+    #elif (SELECTED_OUTPUT_PIN == PB1)
+        TCCR0A &= ~(1 << COM0B0);
+    #endif
 }
 
 void Common_EnableOutput()
 {
-    TCCR0A &= ~(1 << COM0A1);
-    TCCR0A |= (1 << COM0A0);
+    #if (SELECTED_OUTPUT_PIN == PB0)
+        TCCR0A |= (1 << COM0A0);
+    #elif (SELECTED_OUTPUT_PIN == PB1)
+        TCCR0A |= (1 << COM0B0);
+    #endif
 }
 
 void Common_PlayNote(note note)
@@ -38,7 +52,12 @@ void Common_PlayNote(note note)
     // Value calculated from rearranging the equation in terms of OCRnX, page 72 of ATtiny datasheet
     // https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-2586-AVR-8-bit-Microcontroller-ATtiny25-ATtiny45-ATtiny85_Datasheet.pdf
     uint8_t ctcValue = ((F_CPU - (2 * F_PRESCALER * (unsigned long)note.frequency)) / (2 * F_PRESCALER * (unsigned long)note.frequency)) + 1;
-    OCR0A= ctcValue;
+    #if (SELECTED_OUTPUT_PIN == PB0)
+        OCR0A= ctcValue;    
+    #elif (SELECTED_OUTPUT_PIN == PB1)
+        OCR0A= ctcValue;   
+        OCR0B= ctcValue;
+    #endif
 }
 
 void Common_PlayMelody(melody melody)
@@ -55,14 +74,15 @@ void Common_PlayMelody(melody melody)
             Common_DisableOutput();
         
             playNextInSequence = false;
+
             if (melody.notes[i].type == Note)
             {
                 Common_EnableOutput();
                 Common_PlayNote(melody.notes[i]);
             }
 
-
             double totalTicks = (double)(OCR0A * ONE_TICK_MS);
+            
             timerOverflowCountTarget = (long)(oneBeatDuration * melody.notes[i].duration / totalTicks) / 2.0;
             while(playNextInSequence == false){ ;; }
         }
@@ -72,14 +92,20 @@ void Common_PlayMelody(melody melody)
     while (melodyRepeat != 0); 
 }
 
-
-ISR(TIMER0_COMPA_vect)
+void UpdateTimerOverflowCount()
 {
-  timerOverflowCount++;
-  if (timerOverflowCount == timerOverflowCountTarget)
-  {
-    playNextInSequence = true;
-    timerOverflowCountTarget = 0;
-    timerOverflowCount = 0;
-  }
+    timerOverflowCount++;
+    if (timerOverflowCount == timerOverflowCountTarget)
+    {
+        playNextInSequence = true;
+        timerOverflowCountTarget = 0;
+        timerOverflowCount = 0;
+    }
 }
+
+#if (SELECTED_OUTPUT_PIN == PB0)
+    ISR(TIMER0_COMPA_vect){UpdateTimerOverflowCount();}
+#elif (SELECTED_OUTPUT_PIN == PB1)
+    ISR(TIMER0_COMPB_vect){UpdateTimerOverflowCount();}
+#endif
+
